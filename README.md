@@ -3,7 +3,7 @@
 use a simple "helloworld" prototype to test thrift and gRPC.
 All servers and clients are implemented by Golang, Java And Scala
 
-Test result as follows. The first value is using one client to test servers and the second value is using 20 clients to test concurrently.
+Test result as follows (milliseconds/10000 calls). The first value is using one client to test servers and the second value is using 20 clients to test concurrently.
 
 |  | Golang | Java | Scala |
 | ----- | ----- | ----- | ----- |

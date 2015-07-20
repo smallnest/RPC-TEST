@@ -12,25 +12,30 @@ import org.apache.thrift.transport.TTransport;
 public class AppClient {
     public static void main(String[] args) {
         try {
-            TTransport transport;
-            transport = new TSocket("localhost", 9090);
-            transport.open();
-
-            TProtocol protocol = new TBinaryProtocol(transport);
-            Greeter.Client client = new Greeter.Client(protocol);
+            TTransport[] transport = new TTransport[20];
+            Greeter.Client[] client = new Greeter.Client[20];
 
             //warmup
             String name = "world";
-            for (int i = 0; i < 100; i++) {
-                client.sayHello(name);
+            for (int i = 0; i < 20; i++) {
+				transport[i] = new TSocket("localhost", 9090);
+				transport[i].open();
+
+				TProtocol protocol = new TBinaryProtocol(transport[i]);
+                client[i] =  new Greeter.Client(protocol);
+                client[i].sayHello(name);
             }
 
             boolean sync = true;
-            if (sync) { syncTest(client, name); }
+			if (args.length > 0) {
+                sync = Boolean.parseBoolean(args[0]);
+            }
+            if (sync) { syncTest(client[0], name); }
             else { asyncTest(client, name); }
 
-
-            transport.close();
+			for (int i = 0; i < 20; i++) {
+				transport[i].close();
+			}
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -45,23 +50,27 @@ public class AppClient {
         System.out.println("took: " + (System.nanoTime() - t) / 1000000 + " ms");
     }
 
-    private static void asyncTest(final Greeter.Client client, final String name) throws InterruptedException {
+    private static void asyncTest(final Greeter.Client[] client, final String name) throws InterruptedException {
         ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
         final CountDownLatch latch = new CountDownLatch(10000);
         long t = System.nanoTime();
         for (int i = 0; i < 10000; i++) {
+            final int j = i;
             pool.submit(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        client.sayHello(name);
+                    synchronized (client[j % 20]) {
+                        try {
+                            client[j % 20].sayHello(name);
+                        }
+                        catch (TException e) {
+                            e.printStackTrace();
+                        }
+                        finally {
+                            latch.countDown();
+                        }
                     }
-                    catch (TException e) {
-                        e.printStackTrace();
-                    }
-                    finally {
-                        latch.countDown();
-                    }
+
                 }
             });
 

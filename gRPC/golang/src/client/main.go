@@ -37,14 +37,14 @@ func syncTest(c pb.GreeterClient, name string) {
 }
 
 
-func asyncTest(c pb.GreeterClient, name string) {
+func asyncTest(c [20]pb.GreeterClient, name string) {
 	var wg sync.WaitGroup
     wg.Add(10000)
 	
 	i := 10000
 	t := time.Now().UnixNano()	
 	for ; i>0; i-- {
-		go func() {invoke(c, name);wg.Done()}()
+		go func() {invoke(c[i % 20], name);wg.Done()}()
 	}	
 	wg.Wait()
 	fmt.Println("took", (time.Now().UnixNano() - t) / 1000000, "ms")
@@ -58,7 +58,8 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewGreeterClient(conn)
+	var c [20]pb.GreeterClient
+	 
 
 	// Contact the server and print out its response.
 	name := defaultName
@@ -68,16 +69,15 @@ func main() {
 	}
 	
 	//warm up
-	i := 100
-	for ; i>0; i-- {
-		invoke(c, name)
+	i := 0
+	for ; i < 20; i++ {
+		c[i] = pb.NewGreeterClient(conn)
+		invoke(c[i], name)
 	}
 	
 	if sync {
-		syncTest(c, name)
+		syncTest(c[0], name)
 	} else {
 		asyncTest(c, name)
 	}
-
-	//log.Printf("Greeting: %s", r.Message)
 }

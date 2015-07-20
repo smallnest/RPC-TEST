@@ -44,15 +44,16 @@ public class AppClient {
         System.out.println("took: " + (System.nanoTime() - t) / 1000000 + " ms");
     }
 
-    public static void asyncTest(final AppClient client, final String user) {
+    public static void asyncTest(final AppClient[] client, final String user) {
         ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
         final CountDownLatch latch = new CountDownLatch(10000);
         long t = System.nanoTime();
         for (int i = 0; i < 10000; i++) {
+            final int j = i;
             pool.submit(new Runnable() {
                 @Override
                 public void run() {
-                    client.greet(user);
+                    client[j % 20].greet(user);
                     latch.countDown();
                 }
             });
@@ -68,24 +69,30 @@ public class AppClient {
     }
 
     public static void main(String[] args) throws Exception {
-        AppClient client = new AppClient("localhost", 50051);
+        AppClient[] client = new AppClient[20];
         try {
             String user = "world";
 
             int i = 0;
-            for (i = 0; i < 100; i++) { client.greet(user); }
+            for (i = 0; i < 20; i++) {
+                client[i] = new AppClient("localhost", 50051);
+                client[i].greet(user);
+            }
 
             boolean sync = true;
             if (args.length > 0) {
                 sync = Boolean.parseBoolean(args[0]);
             }
 
-            if (sync) { syncTest(client, user); }
+            if (sync) { syncTest(client[0], user); }
             else { asyncTest(client, user); }
         }
         finally {
 
-            client.shutdown();
+            for (int i = 0; i < 20; i++) {
+                client[i].shutdown();
+            }
+
         }
     }
 }
